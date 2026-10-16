@@ -31,9 +31,25 @@ interface HoveredFlowerInfo {
 }
 
 // Reusable math vectors outside render loop to avoid GC
-const _targetCamPos = new THREE.Vector3(0, 1.8, 6.2);
-const _targetLookAt = new THREE.Vector3(0, 0.7, 0);
+const _targetCamPos = new THREE.Vector3(0, 2.35, 5.4);
+const _targetLookAt = new THREE.Vector3(0, 0.72, 0);
 const GOLDEN_ANGLE = 2.399963229728653;
+
+function createStudioBackdropTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createRadialGradient(256, 210, 30, 256, 256, 360);
+  grad.addColorStop(0, '#DFD6C7');
+  grad.addColorStop(0.55, '#CFC3B0');
+  grad.addColorStop(1, '#BEB09B');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
 function createContactShadowTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -41,9 +57,9 @@ function createContactShadowTexture(): THREE.CanvasTexture {
   canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
   const grad = ctx.createRadialGradient(128, 128, 12, 128, 128, 120);
-  grad.addColorStop(0, 'rgba(45, 42, 38, 0.36)');
-  grad.addColorStop(0.5, 'rgba(45, 42, 38, 0.12)');
-  grad.addColorStop(1, 'rgba(45, 42, 38, 0)');
+  grad.addColorStop(0, 'rgba(35, 30, 25, 0.45)');
+  grad.addColorStop(0.5, 'rgba(35, 30, 25, 0.16)');
+  grad.addColorStop(1, 'rgba(35, 30, 25, 0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 256, 256);
   const tex = new THREE.CanvasTexture(canvas);
@@ -57,16 +73,25 @@ function buildProceduralFlowerHead(
 ): THREE.Group {
   const group = new THREE.Group();
   const baseColor = new THREE.Color(colorHex || '#BF6C8B');
-  const innerColor = baseColor.clone().offsetHSL(0.01, 0.08, -0.08);
-  const outerColor = baseColor.clone().offsetHSL(-0.01, -0.04, 0.09);
+  // Prevent pure white washout by adding warm botanical depth to inner/outer petals
+  const hsl = { h: 0, s: 0, l: 0 };
+  baseColor.getHSL(hsl);
+  const innerColor =
+    hsl.l > 0.88
+      ? new THREE.Color().setHSL(hsl.h || 0.09, Math.max(hsl.s, 0.22), 0.78)
+      : baseColor.clone().offsetHSL(0.01, 0.12, -0.11);
+  const outerColor =
+    hsl.l > 0.88
+      ? new THREE.Color().setHSL(hsl.h || 0.09, Math.max(hsl.s, 0.1), 0.94)
+      : baseColor.clone().offsetHSL(-0.01, -0.02, 0.06);
 
   const petalMatInner = new THREE.MeshPhysicalMaterial({
     color: innerColor,
-    roughness: 0.42,
+    roughness: 0.48,
     metalness: 0.02,
-    clearcoat: 0.15,
-    clearcoatRoughness: 0.6,
-    sheen: 0.6,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.65,
+    sheen: 0.45,
     sheenColor: outerColor,
     emissive: new THREE.Color(0x000000),
     side: THREE.DoubleSide,
@@ -74,23 +99,23 @@ function buildProceduralFlowerHead(
 
   const petalMatOuter = new THREE.MeshPhysicalMaterial({
     color: outerColor,
-    roughness: 0.48,
+    roughness: 0.52,
     metalness: 0.02,
-    clearcoat: 0.1,
-    sheen: 0.5,
+    clearcoat: 0.08,
+    sheen: 0.35,
     sheenColor: baseColor,
     emissive: new THREE.Color(0x000000),
     side: THREE.DoubleSide,
   });
 
   const stamenMat = new THREE.MeshStandardMaterial({
-    color: 0xf0b659,
-    roughness: 0.5,
-    metalness: 0.1,
+    color: 0xe69d35,
+    roughness: 0.45,
+    metalness: 0.08,
   });
 
   const calyxMat = new THREE.MeshStandardMaterial({
-    color: 0x5c7a52,
+    color: 0x4a6940,
     roughness: 0.65,
   });
 
@@ -148,6 +173,7 @@ function buildProceduralFlowerHead(
       petal.rotation.x = 0.25 + t * 0.85;
       petal.scale.set(0.85 + t * 0.45, 0.9, 0.6);
       petal.castShadow = true;
+      petal.receiveShadow = true;
       group.add(petal);
     }
   } else if (shapeType === 'tulip') {
@@ -166,6 +192,7 @@ function buildProceduralFlowerHead(
       petal.rotation.x = isOuter ? 0.18 : 0.1;
       petal.scale.set(0.85, 1.38, 0.65);
       petal.castShadow = true;
+      petal.receiveShadow = true;
       group.add(petal);
     }
   } else if (shapeType === 'freesia') {
@@ -226,12 +253,13 @@ function buildProceduralFlowerHead(
       petal.rotation.z = Math.PI / 2 - (isSecondRow ? 0.14 : 0.06);
       petal.scale.set(0.42, 1, 1.15);
       petal.castShadow = true;
+      petal.receiveShadow = true;
       group.add(petal);
     }
   } else if (shapeType === 'babysbreath') {
-    const branchMat = new THREE.MeshStandardMaterial({ color: 0x76946b, roughness: 0.7 });
-    const count = 16;
-    const floretGeo = new THREE.DodecahedronGeometry(0.048, 1);
+    const branchMat = new THREE.MeshStandardMaterial({ color: 0x5d7c53, roughness: 0.7 });
+    const count = 18;
+    const floretGeo = new THREE.DodecahedronGeometry(0.055, 1);
     for (let i = 0; i < count; i++) {
       const phi = Math.acos(1 - (2 * (i + 0.5)) / count);
       const theta = GOLDEN_ANGLE * i;
@@ -248,7 +276,7 @@ function buildProceduralFlowerHead(
       group.add(floret);
 
       const len = pos.length();
-      const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, len, 5), branchMat);
+      const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.009, len, 5), branchMat);
       twig.position.copy(pos).multiplyScalar(0.5);
       twig.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pos.clone().normalize());
       group.add(twig);
@@ -267,20 +295,20 @@ function buildProceduralFlowerHead(
     highlightableMaterials.push(leafMat);
 
     const branchSpine = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, 0.018, 0.65, 8),
+      new THREE.CylinderGeometry(0.014, 0.02, 0.68, 8),
       calyxMat
     );
     branchSpine.position.y = 0.22;
     group.add(branchSpine);
 
-    const leafGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.012, 16);
+    const leafGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.014, 16);
     for (let i = 0; i < 7; i++) {
       const h = -0.02 + i * 0.085;
       const scale = 1 - i * 0.08;
       const side = i % 2 === 0 ? 1 : -1;
       const leaf = new THREE.Mesh(leafGeo, leafMat);
-      leaf.scale.set(scale * 0.9, 1, scale * 1.15);
-      leaf.position.set(side * 0.08 * scale, h, ((i % 3) - 1) * 0.02);
+      leaf.scale.set(scale * 0.95, 1, scale * 1.2);
+      leaf.position.set(side * 0.085 * scale, h, ((i % 3) - 1) * 0.02);
       leaf.rotation.z = side * 0.65;
       leaf.rotation.y = i * 0.4;
       leaf.castShadow = true;
@@ -338,14 +366,15 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
 
     const applyCameraPresetTarget = (preset: CameraViewPreset) => {
       if (preset === 'front') {
-        _targetCamPos.set(0, 1.65, 5.8);
-        _targetLookAt.set(0, 0.65, 0);
+        // Elevated editorial front-angle so the entire flower dome and stems are clearly visible
+        _targetCamPos.set(0, 2.35, 5.4);
+        _targetLookAt.set(0, 0.72, 0);
       } else if (preset === 'top') {
-        _targetCamPos.set(0, 6.1, 0.85);
-        _targetLookAt.set(0, 0.8, 0);
+        _targetCamPos.set(0, 6.0, 0.9);
+        _targetLookAt.set(0, 0.85, 0);
       } else if (preset === 'side') {
-        _targetCamPos.set(5.4, 1.9, 1.8);
-        _targetLookAt.set(0, 0.65, 0);
+        _targetCamPos.set(5.2, 2.1, 2.1);
+        _targetLookAt.set(0, 0.72, 0);
       }
       isTransitioningCameraRef.current = true;
     };
@@ -377,12 +406,11 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       const height = container.clientHeight || 600;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color('#F5F4ED');
-      scene.fog = new THREE.FogExp2('#F5F4ED', 0.035);
+      scene.background = createStudioBackdropTexture();
       sceneRef.current = scene;
 
-      const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-      camera.position.set(0, 1.65, 5.8);
+      const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+      camera.position.set(0, 2.35, 5.4);
       cameraRef.current = camera;
 
       const isHeadless = navigator.webdriver || /HeadlessChrome/i.test(navigator.userAgent);
@@ -395,9 +423,9 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       renderer.setPixelRatio(isHeadless ? 1 : Math.min(window.devicePixelRatio, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.08;
+      renderer.toneMappingExposure = 0.96;
       renderer.shadowMap.enabled = !isHeadless;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
       container.innerHTML = '';
       container.appendChild(renderer.domElement);
       rendererRef.current = renderer;
@@ -406,12 +434,12 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
       pmremGenerator.dispose();
 
-      const hemiLight = new THREE.HemisphereLight(0xfffdf8, 0xe7dbc1, 0.85);
+      const hemiLight = new THREE.HemisphereLight(0xfffaf0, 0x9b8e7e, 0.72);
       hemiLight.position.set(0, 10, 0);
       scene.add(hemiLight);
 
-      const keyLight = new THREE.DirectionalLight(0xfff5e4, 1.65);
-      keyLight.position.set(4.5, 7.5, 5.0);
+      const keyLight = new THREE.DirectionalLight(0xfff4e0, 1.45);
+      keyLight.position.set(3.8, 7.2, 5.5);
       keyLight.castShadow = !isHeadless;
       keyLight.shadow.mapSize.set(1024, 1024);
       keyLight.shadow.camera.near = 0.5;
@@ -425,8 +453,8 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       keyLight.shadow.normalBias = 0.02;
       scene.add(keyLight);
 
-      const rimLight = new THREE.DirectionalLight(0xf3e5f5, 0.75);
-      rimLight.position.set(-4.5, 4.0, -4.5);
+      const rimLight = new THREE.DirectionalLight(0xffeef8, 0.65);
+      rimLight.position.set(-4.5, 4.5, -4.0);
       scene.add(rimLight);
 
       const shadowTex = createContactShadowTexture();
@@ -436,7 +464,7 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
           map: shadowTex,
           transparent: true,
           depthWrite: false,
-          opacity: 0.75,
+          opacity: 0.8,
         })
       );
       shadowPlane.rotation.x = -Math.PI / 2;
@@ -445,8 +473,8 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
 
       const plinthGeo = new THREE.CylinderGeometry(1.55, 1.65, 0.14, 48);
       const plinthMat = new THREE.MeshStandardMaterial({
-        color: 0xe7dbc1,
-        roughness: 0.75,
+        color: 0xb7a893,
+        roughness: 0.7,
         metalness: 0.05,
       });
       const plinth = new THREE.Mesh(plinthGeo, plinthMat);
@@ -461,12 +489,12 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.06;
-      controls.target.set(0, 0.65, 0);
+      controls.target.set(0, 0.72, 0);
       controls.minDistance = 2.8;
       controls.maxDistance = 10.5;
       controls.maxPolarAngle = Math.PI * 0.58;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.65;
+      // Keep front showcase angle stable by default; gently sway instead of full 360 spin hiding the front
+      controls.autoRotate = false;
       controlsRef.current = controls;
 
       const stopTransitionOnUserInteract = () => {
@@ -567,13 +595,14 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       });
       resizeObserver.observe(container);
 
-      const clock = new THREE.Clock();
+      let lastTime = performance.now();
       let animId = 0;
 
-      const animate = () => {
+      const animate = (now: number) => {
         animId = requestAnimationFrame(animate);
-        const delta = Math.min(clock.getDelta(), 0.1);
-        const elapsed = clock.getElapsedTime();
+        const delta = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+        const elapsed = now / 1000;
 
         if (isTransitioningCameraRef.current) {
           camera.position.x = THREE.MathUtils.damp(camera.position.x, _targetCamPos.x, 5.5, delta);
@@ -594,7 +623,7 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
           const anchor = interactiveAnchorsRef.current[i];
           const isHighlighted = anchor.userData.slotId === activeSlot;
           const baseScale = anchor.userData.baseScale || 1.0;
-          const targetScale = isHighlighted ? baseScale * 1.15 : baseScale;
+          const targetScale = isHighlighted ? baseScale * 1.16 : baseScale;
 
           const headGroup = anchor.children[0] as THREE.Group | undefined;
           if (headGroup) {
@@ -605,7 +634,7 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
               headGroup.userData.highlightableMaterials || [];
             const baseCol: THREE.Color | undefined = headGroup.userData.baseColor;
             if (baseCol) {
-              const targetEmissiveIntensity = isHighlighted ? 0.26 : 0.0;
+              const targetEmissiveIntensity = isHighlighted ? 0.28 : 0.0;
               mats.forEach((m) => {
                 m.emissive.copy(baseCol);
                 m.emissiveIntensity = THREE.MathUtils.damp(
@@ -625,13 +654,15 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
         }
 
         if (bouquetGroupRef.current) {
-          bouquetGroupRef.current.position.y = Math.sin(elapsed * 1.4) * 0.022;
+          bouquetGroupRef.current.position.y = Math.sin(elapsed * 1.4) * 0.02;
+          // Subtle editorial breathing rotation so front flowers stay facing forward
+          bouquetGroupRef.current.rotation.y = Math.sin(elapsed * 0.55) * 0.14;
         }
 
         controls.update();
         renderer.render(scene, camera);
       };
-      animate();
+      animId = requestAnimationFrame(animate);
 
       return () => {
         cancelAnimationFrame(animId);
@@ -645,7 +676,7 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       };
     }, []);
 
-    // Rebuild 3D Bouquet Geometry using Florist 'Spiral Hand-tied' & 'Mass-Filler-Line' Algorithm
+    // Rebuild 3D Bouquet Geometry using Korean Florist Front-Facing Hand-tied Design
     useEffect(() => {
       const bouquetGroup = bouquetGroupRef.current;
       if (!bouquetGroup) return;
@@ -657,7 +688,7 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       interactiveAnchorsRef.current = [];
 
       const stemMat = new THREE.MeshStandardMaterial({
-        color: 0x4f6d46,
+        color: 0x45633d,
         roughness: 0.72,
       });
 
@@ -665,59 +696,89 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
 
       const outerWrapMat = new THREE.MeshPhysicalMaterial({
         color: new THREE.Color(wrappingColor || '#E7DBC1'),
-        roughness: 0.78,
+        roughness: 0.76,
         metalness: 0.02,
-        clearcoat: 0.05,
+        clearcoat: 0.06,
         side: THREE.DoubleSide,
       });
 
       const innerTissueMat = new THREE.MeshStandardMaterial({
-        color: 0xfbfaf6,
+        color: 0xf7f4eb,
         roughness: 0.85,
         side: THREE.DoubleSide,
       });
 
-      const upperConeGeo = new THREE.CylinderGeometry(1.42, 0.34, 1.65, 32, 1, true);
+      // Sculpted Korean wrapping cone: high in the back (-Z) to frame the bouquet, scooped low in front (+Z) so all flowers show!
+      const upperConeGeo = new THREE.CylinderGeometry(1.42, 0.34, 1.55, 48, 12, true);
       const posAttr = upperConeGeo.attributes.position;
       for (let i = 0; i < posAttr.count; i++) {
         const y = posAttr.getY(i);
         const x = posAttr.getX(i);
         const z = posAttr.getZ(i);
-        const angle = Math.atan2(z, x);
-        if (y > 0) {
-          const pleat = Math.sin(angle * 7) * 0.09 + Math.cos(angle * 4) * 0.07;
-          posAttr.setX(i, x * (1 + pleat));
-          posAttr.setZ(i, z * (1 + pleat));
-          posAttr.setY(i, y + Math.sin(angle * 5) * 0.14);
+        const angle = Math.atan2(z, x); // +Z is front (angle ~ PI/2)
+        const normalizedY = (y + 0.775) / 1.55; // 0 at bottom, 1 at top
+
+        if (normalizedY > 0.15) {
+          // Front factor: 1 at front (+Z), 0 at back (-Z)
+          const frontFactor = Math.max(0, Math.sin(angle));
+          const backFactor = Math.max(0, -Math.sin(angle));
+
+          const pleat = Math.sin(angle * 7) * 0.06 + Math.cos(angle * 4) * 0.05;
+          // Flare out slightly in front while dipping low so flowers aren't blocked
+          const frontFlare = 1 + pleat + frontFactor * 0.12 * normalizedY;
+          posAttr.setX(i, x * frontFlare);
+          posAttr.setZ(i, z * frontFlare);
+
+          // Lower the front collar by up to 0.72 units, raise the back backdrop by 0.28 units
+          const yOffset =
+            -frontFactor * 0.72 * Math.pow(normalizedY, 1.2) +
+            backFactor * 0.28 * normalizedY +
+            Math.sin(angle * 5) * 0.06 * normalizedY;
+          posAttr.setY(i, y + yOffset);
         }
       }
       upperConeGeo.computeVertexNormals();
       const upperWrap = new THREE.Mesh(upperConeGeo, outerWrapMat);
-      upperWrap.position.y = 0.25;
+      upperWrap.position.y = 0.22;
       upperWrap.castShadow = true;
       upperWrap.receiveShadow = true;
       wrapGroup.add(upperWrap);
 
+      // Back layered paper wings (placed behind the flowers on the -Z side)
       for (let w = 0; w < 3; w++) {
         const wingGeo = new THREE.CylinderGeometry(
           1.35 + w * 0.06,
           0.32,
-          1.85 + w * 0.12,
-          24,
+          1.78 + w * 0.1,
+          28,
           1,
           true,
-          -Math.PI * 0.35 + (w - 1) * 0.45,
+          Math.PI * 0.65 + (w - 1) * 0.35,
           Math.PI * 0.7
         );
         const wing = new THREE.Mesh(wingGeo, w === 1 ? innerTissueMat : outerWrapMat);
-        wing.position.set(0, 0.35 + w * 0.04, -0.05 * w);
-        wing.rotation.x = -0.06;
+        wing.position.set(0, 0.38 + w * 0.05, -0.06 * w);
+        wing.rotation.x = -0.08;
         wrapGroup.add(wing);
       }
 
-      const tissueGeo = new THREE.CylinderGeometry(1.26, 0.32, 1.5, 28, 1, true);
+      // Soft inner tissue paper (also scooped in front)
+      const tissueGeo = new THREE.CylinderGeometry(1.22, 0.32, 1.35, 36, 8, true);
+      const tPos = tissueGeo.attributes.position;
+      for (let i = 0; i < tPos.count; i++) {
+        const y = tPos.getY(i);
+        const x = tPos.getX(i);
+        const z = tPos.getZ(i);
+        const angle = Math.atan2(z, x);
+        const normY = (y + 0.675) / 1.35;
+        if (normY > 0.2) {
+          const frontFactor = Math.max(0, Math.sin(angle));
+          tPos.setY(i, y - frontFactor * 0.58 * normY);
+        }
+      }
+      tissueGeo.computeVertexNormals();
       const tissueMesh = new THREE.Mesh(tissueGeo, innerTissueMat);
-      tissueMesh.position.y = 0.28;
+      tissueMesh.position.y = 0.22;
       wrapGroup.add(tissueMesh);
 
       const lowerSkirtGeo = new THREE.CylinderGeometry(0.33, 0.56, 1.05, 24, 1, true);
@@ -767,75 +828,90 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
       bouquetGroup.add(wrapGroup);
 
       const bindingPoint = new THREE.Vector3(0, -0.52, 0);
-      let spiralIndex = 0;
+
+      // Collect all stems and distribute them in a front-facing tiered florist dome
+      let mainIdx = 0;
+      let subIdx = 0;
+      let fillerIdx = 0;
+      let greenIdx = 0;
 
       components.forEach((slot) => {
         const count = Math.max(1, Math.min(15, slot.stemCount || 3));
         for (let i = 0; i < count; i++) {
           const t = count === 1 ? 0.5 : i / (count - 1);
-          let radius = 0.3;
-          let domeBaseY = 1.1;
-          let airyLiftY = 0;
-          let tiltRad = 0.2;
-          let thetaOffset = 0;
+          let x = 0;
+          let y = 1.2;
+          let z = 0;
+          let forwardPitch = 0.42;
+          let sideYaw = 0;
 
           if (slot.role === 'MAIN') {
-            radius = count === 1 ? 0.0 : 0.08 + Math.sqrt((i + 0.3) / count) * 0.27;
-            domeBaseY = 1.2 - radius * 0.18;
-            tiltRad = 0.08 + t * 0.14;
-            thetaOffset = 0;
+            // Front-center focal zone: clearly visible in front view, tiered height
+            const spreadAngle = count === 1 ? 0 : (t - 0.5) * Math.PI * 0.75;
+            const ringR = count === 1 ? 0.08 : 0.22 + (i % 2) * 0.18;
+            x = Math.sin(spreadAngle) * (ringR + 0.18);
+            z = 0.22 + Math.cos(spreadAngle) * ringR * 0.85 - (i % 2) * 0.12;
+            y = 1.22 + (1 - z) * 0.18 + (i % 2) * 0.08;
+            forwardPitch = 0.48 + Math.max(0, z) * 0.25;
+            sideYaw = x * 0.45;
+            mainIdx++;
           } else if (slot.role === 'SUB') {
-            radius = 0.35 + t * 0.3;
-            domeBaseY = 1.12 - (radius - 0.35) * 0.35;
-            tiltRad = 0.25 + t * 0.17;
-            thetaOffset = GOLDEN_ANGLE * 0.5;
+            // Middle arch framing the main flowers
+            const angle = ((subIdx + 0.5) / Math.max(count, 1)) * Math.PI * 1.15 - Math.PI * 0.575;
+            const r = 0.52 + (subIdx % 2) * 0.14;
+            x = Math.sin(angle) * r;
+            z = Math.cos(angle) * r * 0.75 + 0.05;
+            y = 1.18 + (0.35 - z) * 0.28 + (subIdx % 2) * 0.07;
+            forwardPitch = 0.45 + Math.max(0, z) * 0.22;
+            sideYaw = x * 0.52;
+            subIdx++;
           } else if (slot.role === 'FILLER') {
-            radius = 0.25 + ((i * 0.618) % 1) * 0.45;
-            domeBaseY = 1.1 - radius * 0.28;
-            airyLiftY = 0.15 + (i % 3) * 0.05;
-            tiltRad = 0.22 + t * 0.24;
-            thetaOffset = GOLDEN_ANGLE * 1.25;
+            // Airy filler popping up between and above main/sub flowers
+            const angle = fillerIdx * GOLDEN_ANGLE;
+            const r = 0.32 + (fillerIdx % 3) * 0.22;
+            x = Math.sin(angle) * r;
+            z = Math.cos(angle) * r * 0.7;
+            y = 1.34 + (0.3 - z) * 0.22 + (fillerIdx % 2) * 0.09;
+            forwardPitch = 0.35 + Math.max(0, z) * 0.2;
+            sideYaw = x * 0.45;
+            fillerIdx++;
           } else {
-            radius = 0.65 + t * 0.3;
-            domeBaseY = 1.02 - (radius - 0.65) * 0.45;
-            tiltRad = 0.48 + t * 0.2;
-            thetaOffset = GOLDEN_ANGLE * 2.1;
+            // GREENERY: Back & side crown arch framing the silhouette
+            const angle = ((greenIdx + 0.5) / Math.max(count, 1)) * Math.PI * 1.3 - Math.PI * 0.65;
+            const r = 0.78 + (greenIdx % 2) * 0.12;
+            x = Math.sin(angle) * r;
+            z = -Math.abs(Math.cos(angle)) * 0.38 + 0.05;
+            y = 1.38 + (greenIdx % 2) * 0.12 - Math.abs(x) * 0.12;
+            forwardPitch = 0.28;
+            sideYaw = x * 0.6;
+            greenIdx++;
           }
-
-          const theta = spiralIndex * GOLDEN_ANGLE + thetaOffset;
-          spiralIndex++;
-
-          const maxBouquetRadius = 1.06;
-          const worldR = radius * maxBouquetRadius;
-          const x = Math.cos(theta) * worldR;
-          const z = Math.sin(theta) * worldR;
-          const y = domeBaseY + airyLiftY;
 
           const flowerAnchor = new THREE.Group();
           flowerAnchor.position.set(x, y, z);
 
-          const radialDir = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
-          const tangentDir = new THREE.Vector3(-Math.sin(theta), 0, Math.cos(theta));
-          const headUpVec = new THREE.Vector3(0, Math.cos(tiltRad), 0)
-            .addScaledVector(radialDir, Math.sin(tiltRad))
-            .addScaledVector(tangentDir, 0.08)
-            .normalize();
+          // Orient flower face toward the front viewer (+Z and +Y) so petals & centers show clearly
+          const headUpVec = new THREE.Vector3(
+            Math.sin(sideYaw) * 0.55,
+            Math.cos(forwardPitch),
+            Math.sin(forwardPitch)
+          ).normalize();
 
           flowerAnchor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), headUpVec);
 
           const headMesh = buildProceduralFlowerHead(slot.shapeType, slot.colorHex);
           const roleScale =
             slot.role === 'MAIN'
-              ? 1.16
+              ? 1.24
               : slot.role === 'SUB'
-              ? 0.96
+              ? 1.02
               : slot.role === 'FILLER'
-              ? 0.86
-              : 1.02;
+              ? 0.92
+              : 1.08;
           headMesh.scale.setScalar(roleScale);
           flowerAnchor.add(headMesh);
 
-          const ringGeo = new THREE.RingGeometry(0.25, 0.29, 24);
+          const ringGeo = new THREE.RingGeometry(0.26, 0.31, 24);
           const ringMat = new THREE.MeshBasicMaterial({
             color: 0xbf6c8b,
             side: THREE.DoubleSide,
@@ -847,19 +923,16 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
           flowerAnchor.add(ring);
 
           const topPoint = new THREE.Vector3(x, y, z);
-          const bindSpiralOffset = new THREE.Vector3(
-            Math.cos(theta + Math.PI / 2) * 0.055,
-            0,
-            Math.sin(theta + Math.PI / 2) * 0.055
-          );
-          const stemBindPos = bindingPoint.clone().add(bindSpiralOffset);
+          const stemBindPos = bindingPoint
+            .clone()
+            .add(new THREE.Vector3(x * 0.08, 0, z * 0.08));
           const stemDir = topPoint.clone().sub(stemBindPos).normalize();
           const bottomPoint = stemBindPos.clone().sub(stemDir.clone().multiplyScalar(0.88));
           const fullStemVec = topPoint.clone().sub(bottomPoint);
           const stemLen = fullStemVec.length();
 
           const stemMesh = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.02, 0.025, stemLen, 8),
+            new THREE.CylinderGeometry(0.022, 0.026, stemLen, 8),
             stemMat
           );
           stemMesh.position.copy(bottomPoint).add(fullStemVec.multiplyScalar(0.5));
@@ -892,11 +965,11 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
     }, [components, wrappingColor, ribbonColor]);
 
     return (
-      <div className="relative w-full h-full select-none overflow-hidden bg-[#F5F4ED]">
+      <div className="relative w-full h-full select-none overflow-hidden bg-[#CFC3B0]">
         <div ref={containerRef} className="w-full h-full" />
 
         {/* Minimal Camera Angle Switcher */}
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-[#F5F4ED]/95 border border-[#2D2A26]/12 rounded-full px-2 py-1 shadow-sm">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-[#F5F4ED]/95 border border-[#2D2A26]/15 rounded-full px-2 py-1 shadow-md">
           {(
             [
               { id: 'front', label: '정면 뷰' },
@@ -942,3 +1015,4 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
     );
   }
 );
+

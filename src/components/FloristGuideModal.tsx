@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Check,
+  CheckCircle2,
   Copy,
+  Loader2,
   MessageSquareHeart,
   Printer,
   Sparkles,
@@ -49,6 +51,23 @@ export const FloristGuideModal: React.FC<FloristGuideModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [previewTab, setPreviewTab] = useState<'3d' | 'ai'>('3d');
+  const [renderProgress, setRenderProgress] = useState(0);
+
+  useEffect(() => {
+    if (!isRenderingPhoto) {
+      setRenderProgress(0);
+      return;
+    }
+    setRenderProgress(8);
+    const interval = setInterval(() => {
+      setRenderProgress((prev) => {
+        if (prev >= 94) return prev;
+        const step = prev < 45 ? 5 : prev < 75 ? 3 : 1;
+        return Math.min(94, prev + step);
+      });
+    }, 220);
+    return () => clearInterval(interval);
+  }, [isRenderingPhoto]);
 
   if (!isOpen) return null;
 
@@ -58,6 +77,13 @@ export const FloristGuideModal: React.FC<FloristGuideModalProps> = ({
     mainSlot && mainSlot.alternatives && mainSlot.alternatives.length > 0
       ? mainSlot.alternatives.slice(0, 2).join(', ')
       : '하노이 라넌큘러스, 가든 로즈';
+
+  const renderStages = [
+    `3D 꽃다발 정면 구도 및 포장지(${wrappingColor}) 스캔`,
+    `메인 꽃(${mainFlowerName})과 서브·필러 꽃잎 질감 렌더링`,
+    `자연광 플로럴 스튜디오 조명 및 색감 보정 마무리`,
+  ];
+  const activeStageIndex = renderProgress < 38 ? 0 : renderProgress < 74 ? 1 : 2;
 
   const handleSwitchToAiTab = async () => {
     setPreviewTab('ai');
@@ -88,12 +114,12 @@ export const FloristGuideModal: React.FC<FloristGuideModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D2A26]/60 p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-[#F5F4ED] border border-[#E7DBC1] rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D2A26]/60 p-4 overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-[#F5F4ED] border border-[#E7DBC1] rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col">
         {/* Clean Modal Header */}
-        <div className="no-print flex items-center justify-between px-6 py-4 bg-[#E7DBC1]/60 border-b border-[#2D2A26]/10 shrink-0">
+        <div className="no-print flex items-center justify-between px-5 py-3.5 bg-[#E7DBC1]/60 border-b border-[#2D2A26]/10 shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-[#2D2A26] font-serif-kr">
+            <h2 className="text-base font-bold text-[#2D2A26] font-serif-kr">
               플로리스트 주문 가이드
             </h2>
             <p className="text-xs text-[#2D2A26]/65">
@@ -111,9 +137,9 @@ export const FloristGuideModal: React.FC<FloristGuideModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-5 overflow-y-auto space-y-4">
           {/* Top Segmented Toggle: [3D 스냅샷 보기 | ✨ AI 실사 사진 생성하기] */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="no-print flex items-center p-1 bg-[#E7DBC1] rounded-xl">
               <button
                 type="button"
@@ -143,24 +169,66 @@ export const FloristGuideModal: React.FC<FloristGuideModalProps> = ({
             </div>
 
             {/* Visual Reference Frame */}
-            <div className="aspect-4/3 w-full bg-[#E7DBC1]/35 rounded-xl overflow-hidden border border-[#2D2A26]/10 flex items-center justify-center relative">
+            <div className="aspect-16/10 w-full bg-[#DFD6C7] rounded-xl overflow-hidden border border-[#2D2A26]/10 flex items-center justify-center relative">
               {previewTab === '3d' ? (
                 snapshots.front ? (
                   <img
                     src={snapshots.front}
                     alt="3D 꽃다발 스냅샷"
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-contain bg-[#F5F4ED]"
+                    className="w-full h-full object-contain bg-[#DFD6C7]"
                   />
                 ) : (
                   <span className="text-xs text-[#2D2A26]/50">3D 스냅샷 이미지</span>
                 )
               ) : isRenderingPhoto ? (
-                <div className="text-center space-y-2 p-6">
-                  <Sparkles className="w-6 h-6 text-[#BF6C8B] animate-spin mx-auto" />
-                  <p className="text-xs font-semibold text-[#2D2A26]">
-                    현재 3D 꽃다발 구성을 바탕으로 AI 실사 사진을 생성하고 있습니다...
-                  </p>
+                <div className="w-full max-w-md mx-auto p-5 bg-[#F5F4ED]/95 border border-[#BF6C8B]/30 rounded-xl shadow-sm space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#2D2A26] flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#BF6C8B] animate-pulse" />
+                      AI 실사 꽃다발 렌더링 진행 중
+                    </span>
+                    <span className="font-mono-num font-bold text-[#BF6C8B]">
+                      {renderProgress}%
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-[#E7DBC1] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#BF6C8B] rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${renderProgress}%` }}
+                    />
+                  </div>
+
+                  {/* Step Checklist */}
+                  <div className="space-y-1.5 pt-0.5">
+                    {renderStages.map((label, idx) => {
+                      const isDone = idx < activeStageIndex;
+                      const isCurrent = idx === activeStageIndex;
+                      return (
+                        <div
+                          key={label}
+                          className={`flex items-center gap-2 text-[11px] transition-colors ${
+                            isCurrent
+                              ? 'text-[#2D2A26] font-semibold'
+                              : isDone
+                              ? 'text-[#2D2A26]/65'
+                              : 'text-[#2D2A26]/35'
+                          }`}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#5c7a52] shrink-0" />
+                          ) : isCurrent ? (
+                            <Loader2 className="w-3.5 h-3.5 text-[#BF6C8B] animate-spin shrink-0" />
+                          ) : (
+                            <span className="w-3.5 h-3.5 rounded-full border border-[#2D2A26]/25 shrink-0" />
+                          )}
+                          <span className="truncate">{label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : photorealisticUrl ? (
                 <img
