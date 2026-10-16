@@ -385,6 +385,27 @@ export const BouquetCanvas3D = forwardRef<BouquetCanvas3DRef, BouquetCanvas3DPro
         const scene = sceneRef.current;
         const camera = cameraRef.current;
         if (!renderer || !scene || !camera) return '';
+
+        // Clear active highlight and hide all pink halo rings & highlight effects before snapshot
+        activeHighlightSlotRef.current = null;
+        for (let i = 0; i < interactiveAnchorsRef.current.length; i++) {
+          const anchor = interactiveAnchorsRef.current[i];
+          const baseScale = anchor.userData.baseScale || 1.0;
+          const headGroup = anchor.children[0] as THREE.Group | undefined;
+          if (headGroup) {
+            headGroup.scale.setScalar(baseScale);
+            const mats: THREE.MeshStandardMaterial[] =
+              headGroup.userData.highlightableMaterials || [];
+            mats.forEach((m) => {
+              m.emissiveIntensity = 0.0;
+            });
+          }
+          const haloRing = anchor.children[1];
+          if (haloRing) {
+            haloRing.visible = false;
+          }
+        }
+
         renderer.render(scene, camera);
         return renderer.domElement.toDataURL('image/png');
       },

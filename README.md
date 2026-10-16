@@ -59,7 +59,7 @@ All AI capabilities are built with the official **`@google/genai` SDK** and orch
 | :--- | :--- | :--- | :--- |
 | **1. Occasion & Mood Analysis** | **`gemini-3.8-flash`** | • Multimodal Vision + Text Input<br>• Image Relevance Guardrail<br>• Structured Outputs (`responseSchema`) | • Extracts 4 dominant Hex colors and mood keywords from an uploaded reference photo (outfit, venue, poster).<br>• **Multimodal Validation (`isImageRelevant`):** Detects irrelevant uploads (e.g., receipts, code screenshots, blank screens) and gracefully falls back to occasion-based recommendations with a friendly notice.<br>• Recommends 4 main flower candidates with Korean/English names, **flower meanings**, realistic Korean retail stem prices, 3D procedural shape mappings (`shapeType`), and out-of-stock substitutes. |
 | **2. 3D Bouquet Recipe Generation** | **`gemini-3.8-flash`** | • Domain-Constrained Reasoning<br>• Strict JSON Schema (`responseSchema`) | • Designs 3 distinct bouquet styles (*Pastel*, *Vivid*, *Natural Garden*) around the chosen main flower.<br>• Enforces professional florist **Mass (45%) : Sub (25%) : Filler (18%) : Greenery (12%)** proportions within the user's net budget (automatically factoring in the `7,000 KRW` standard wrapping fee).<br>• Generates a pool of 6 interactive `swapCandidates` and 2–3 `alternatives` per slot so users can freely customize their 3D bouquet. |
-| **3. 3D-to-Photorealistic Rendering** | **`gemini-3.1-flash-lite-image`** | • Image-to-Image + Text Conditioning<br>• `aspectRatio: '4:3'` Studio Config | • Takes a live **PNG snapshot captured directly from the `Three.js` 3D WebGL canvas** (`snapshotBase64`) alongside a detailed botanical prompt (exact flower species, stem counts, hex colors, wrapping paper, and satin ribbon color).<br>• Transforms the procedural 3D composition into an ultra-realistic studio florist photograph while preserving the user's exact color harmony and arrangement structure. |
+| **3. 3D-to-Photorealistic Rendering** | **`gemini-nano-banana-2.1`**<br>*(Nano Banana 2.1)* | • High-Consistency Image-to-Image + Text Conditioning<br>• `aspectRatio: '4:3'` Studio Config | • Takes a live **PNG snapshot captured directly from the `Three.js` 3D WebGL canvas** (`snapshotBase64`) alongside a detailed botanical prompt (exact flower species, stem counts, hex colors, wrapping paper, and satin ribbon color).<br>• Transforms the procedural 3D composition into an ultra-realistic studio florist photograph while preserving the user's exact color harmony and arrangement structure. |
 
 > **💡 Reliability & Graceful Degradation:** If network connectivity is limited or an API call times out, Darte Flores automatically falls back to client-side canvas color/variance analysis, rich occasion presets, and an automated **Atelier Studio Lookbook Composite Renderer** built from the 3D WebGL snapshot so the user flow is never interrupted.
 
@@ -90,7 +90,7 @@ All AI capabilities are built with the official **`@google/genai` SDK** and orch
 - **Frontend:** React 19, TypeScript, Tailwind CSS v4, Lucide Icons
 - **3D Graphics Engine:** Three.js (`WebGLRenderer` with `preserveDrawingBuffer`, `OrbitControls`, Raycasting, Procedural Botanical Geometries)
 - **Backend / API Server:** Node.js, Express, `tsx`
-- **AI SDK & Models:** `@google/genai` SDK (`gemini-3.8-flash`, `gemini-3.1-flash-lite-image`)
+- **AI SDK & Models:** `@google/genai` SDK (`gemini-3.8-flash`, `gemini-nano-banana-2.1` [Nano Banana 2.1])
 
 ```text
 darte-flores/

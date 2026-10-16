@@ -305,7 +305,7 @@ Placed on a warm travertine stone table against a soft Petal White (#F5F4ED) stu
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite-image',
+      model: 'gemini-nano-banana-2.1',
       contents: { parts },
       config: {
         imageConfig: {

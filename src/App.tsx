@@ -290,6 +290,8 @@ export default function App() {
 
   // Open Final Florist Guide Modal
   const handleOpenFloristGuide = () => {
+    setOpenDrawerSlotId(null);
+    setHoveredSlotId(null);
     if (canvas3DRef.current) {
       const snap = canvas3DRef.current.captureSnapshot();
       if (snap) {
