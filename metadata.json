@@ -1,0 +1,6 @@
+{
+  "name": "Darte Flores — 3D 커스텀 꽃다발 메이커",
+  "description": "다르테 플로레스(너에게 꽃을 선물하다) — 기념일과 분위기 사진, 꽃말을 바탕으로 메인 꽃을 추천하고 3가지 스타일의 3D 꽃다발 커스텀 및 플로리스트 주문 가이드를 제공하는 웹 애플리케이션",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
