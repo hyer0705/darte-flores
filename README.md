@@ -14,7 +14,6 @@
 
 - **Public GitHub Repository:** [https://github.com/hyer0705/darte-flores](https://github.com/hyer0705/darte-flores)
 - **Demo Video:** `[TODO: Insert YouTube or Google Drive Demo Video Link Here]`
-- **Live AI Studio App:** [https://ai.studio/apps/3564b7cb-29d4-495e-ab10-6fdfa1434c15](https://ai.studio/apps/3564b7cb-29d4-495e-ab10-6fdfa1434c15)
 
 ---
 
